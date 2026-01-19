@@ -1,0 +1,913 @@
+// Matcha Trading Platform - Prisma Schema
+// B2B marketplace for matcha trading
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum RfqStatus {
+  DRAFT
+  SUBMITTED
+  QUOTED
+  PARTIALLY_QUOTED
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+enum QuoteStatus {
+  DRAFT
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  WITHDRAWN
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum Incoterm {
+  EXW
+  FOB
+  CIF
+  DDP
+  DAP
+}
+
+enum TrendSeriesType {
+  PRICING
+  WEATHER
+  DEMAND
+  SUPPLY
+}
+
+enum CartType {
+  DIRECT    // B2C direct purchase
+  RFQ       // B2B RFQ flow
+}
+
+enum CartStatus {
+  ACTIVE
+  CONVERTED
+  ABANDONED
+}
+
+enum DocumentType {
+  COA
+  COO
+  ORGANIC_CERT
+  JAS_CERT
+  USDA_CERT
+  EU_CERT
+  PHYTOSANITARY
+  SPEC_SHEET
+  SDS
+  OTHER
+}
+
+// ==================== LOOKUP TABLES ====================
+
+model Region {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  country     String
+  description String?
+  isActive    Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  products    Product[]
+  trendSeries TrendSeries[]
+
+  @@map("regions")
+}
+
+model GradeType {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  code        String    @unique
+  description String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  products    Product[]
+
+  @@map("grade_types")
+}
+
+// ==================== USER & COMPANY ====================
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  passwordHash      String
+  name              String
+  role              UserRole  @default(BUYER)
+  isActive          Boolean   @default(true)
+  refreshTokenHash  String?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  lastLoginAt       DateTime?
+
+  companyId         String?
+  company           Company?  @relation(fields: [companyId], references: [id])
+  
+  sellerProfile         SellerProfile?
+  buyerProfile          BuyerProfile?
+  messages              Message[]
+  insightPosts          InsightsPost[]
+  carts                 Cart[]
+  createdComplianceRules ComplianceRule[] @relation("ComplianceRuleCreator")
+  auditLogs             AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([companyId])
+  @@map("users")
+}
+
+model Company {
+  id            String    @id @default(cuid())
+  name          String
+  legalName     String?
+  taxId         String?
+  website       String?
+  phone         String?
+  email         String?
+  description   String?
+  logoUrl       String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  users         User[]
+  addresses     Address[]
+  sellerProfile SellerProfile?
+  buyerProfile  BuyerProfile?
+
+  @@map("companies")
+}
+
+model Address {
+  id            String    @id @default(cuid())
+  label         String?
+  line1         String
+  line2         String?
+  city          String
+  state         String?
+  postalCode    String
+  country       String
+  isDefault     Boolean   @default(false)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  companyId     String
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("addresses")
+}
+
+model SellerProfile {
+  id                  String              @id @default(cuid())
+  verificationStatus  VerificationStatus  @default(PENDING)
+  verificationNotes   String?
+  verifiedAt          DateTime?
+  
+  yearsInBusiness     Int?
+  annualCapacityKg    Int?
+  exportLicenseNo     String?
+  
+  isOrganic           Boolean   @default(false)
+  isJasCertified      Boolean   @default(false)
+  isUsdaCertified     Boolean   @default(false)
+  isEuCertified       Boolean   @default(false)
+  
+  bio                 String?
+  bannerImageUrl      String?
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  userId              String    @unique
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  companyId           String    @unique
+  company             Company   @relation(fields: [companyId], references: [id])
+  
+  products            Product[]
+  quotes              Quote[]
+
+  @@index([verificationStatus])
+  @@map("seller_profiles")
+}
+
+model BuyerProfile {
+  id                    String    @id @default(cuid())
+  
+  businessType          String?
+  annualVolumeKg        Int?
+  preferredIncoterm     Incoterm?
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  companyId             String    @unique
+  company               Company   @relation(fields: [companyId], references: [id])
+  
+  rfqs                  Rfq[]
+  shortlist             Shortlist[]
+
+  @@map("buyer_profiles")
+}
+
+model Shortlist {
+  id              String        @id @default(cuid())
+  notes           String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  buyerProfileId  String
+  buyerProfile    BuyerProfile  @relation(fields: [buyerProfileId], references: [id], onDelete: Cascade)
+  
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([buyerProfileId, productId])
+  @@index([buyerProfileId])
+  @@index([productId])
+  @@map("shortlist")
+}
+
+// ==================== PRODUCTS & INVENTORY ====================
+
+model Product {
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  description     String?
+  shortDesc       String?
+  
+  leadTimeDays    Int           @default(14)
+  moqKg           Decimal       @db.Decimal(10, 2)
+  
+  certifications  String[]
+  
+  status          ProductStatus @default(DRAFT)
+  isFeatured      Boolean       @default(false)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  sellerId        String
+  seller          SellerProfile @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  
+  regionId        String
+  region          Region        @relation(fields: [regionId], references: [id])
+  
+  gradeTypeId     String
+  gradeType       GradeType     @relation(fields: [gradeTypeId], references: [id])
+  
+  skus            Sku[]
+  images          ProductImage[]
+  documents       ProductDocument[]
+  shortlistedBy   Shortlist[]
+
+  @@index([sellerId])
+  @@index([regionId])
+  @@index([gradeTypeId])
+  @@index([status])
+  @@map("products")
+}
+
+model Sku {
+  id              String    @id @default(cuid())
+  sku             String    @unique
+  name            String
+  
+  packagingType   String
+  netWeightG      Int
+  
+  lengthCm        Decimal?  @db.Decimal(6, 2)
+  widthCm         Decimal?  @db.Decimal(6, 2)
+  heightCm        Decimal?  @db.Decimal(6, 2)
+  grossWeightG    Int?
+  
+  hsCode          String?
+  originCountry   String    @default("JP")
+  currency        String    @default("USD")
+  
+  isActive        Boolean   @default(true)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  productId       String
+  product         Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  priceTiers      PriceTier[]
+  inventory       Inventory?
+  rfqLineItems    RfqLineItem[]
+  quoteLineItems  QuoteLineItem[]
+  orderLineItems  OrderLineItem[]
+  cartItems       CartItem[]
+
+  @@index([productId])
+  @@map("skus")
+}
+
+model PriceTier {
+  id            String    @id @default(cuid())
+  minQty        Int
+  maxQty        Int?
+  unit          String    @default("kg")
+  pricePerUnit  Decimal   @db.Decimal(10, 2)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  skuId         String
+  sku           Sku       @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@index([skuId])
+  @@map("price_tiers")
+}
+
+model Inventory {
+  id                String    @id @default(cuid())
+  availableQty      Int       @default(0)
+  reservedQty       Int       @default(0)
+  unit              String    @default("kg")
+  warehouseLocation String?
+  
+  lastUpdatedAt     DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  skuId             String    @unique
+  sku               Sku       @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@map("inventory")
+}
+
+model ProductImage {
+  id          String    @id @default(cuid())
+  url         String
+  altText     String?
+  sortOrder   Int       @default(0)
+  isPrimary   Boolean   @default(false)
+  
+  createdAt   DateTime  @default(now())
+  
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model ProductDocument {
+  id          String        @id @default(cuid())
+  type        DocumentType
+  name        String
+  url         String
+  fileSize    Int?
+  
+  createdAt   DateTime      @default(now())
+  
+  productId   String
+  product     Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_documents")
+}
+
+// ==================== SHOPPING CART ====================
+
+model Cart {
+  id                  String      @id @default(cuid())
+  type                CartType    @default(DIRECT)
+  status              CartStatus  @default(ACTIVE)
+  destinationCountry  String?
+  incoterm            Incoterm?
+  subtotal            Decimal     @default(0) @db.Decimal(12, 2)
+  currency            String      @default("USD")
+  itemCount           Int         @default(0)
+  notes               String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  userId              String
+  user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items               CartItem[]
+
+  @@index([userId, status])
+  @@map("carts")
+}
+
+model CartItem {
+  id          String    @id @default(cuid())
+  qty         Decimal   @db.Decimal(10, 2)
+  unit        String    @default("kg")
+  unitPrice   Decimal   @db.Decimal(10, 2)
+  totalPrice  Decimal   @db.Decimal(12, 2)
+  currency    String    @default("USD")
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  cartId      String
+  cart        Cart      @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  skuId       String
+  sku         Sku       @relation(fields: [skuId], references: [id])
+
+  @@unique([cartId, skuId])
+  @@index([cartId])
+  @@map("cart_items")
+}
+
+// ==================== RFQ & QUOTES ====================
+
+model Rfq {
+  id                  String      @id @default(cuid())
+  rfqNumber           String      @unique
+  title               String
+  notes               String?
+  
+  destinationCountry  String
+  destinationCity     String?
+  incoterm            Incoterm    @default(FOB)
+  
+  neededByDate        DateTime?
+  expiresAt           DateTime?
+  
+  status              RfqStatus   @default(DRAFT)
+  submittedAt         DateTime?
+  
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  
+  buyerProfileId      String
+  buyerProfile        BuyerProfile @relation(fields: [buyerProfileId], references: [id])
+  
+  lineItems              RfqLineItem[]
+  quotes                 Quote[]
+  messageThread          MessageThread?
+  complianceEvaluations  ComplianceEvaluation[]
+
+  @@index([buyerProfileId])
+  @@index([status])
+  @@map("rfqs")
+}
+
+model RfqLineItem {
+  id          String    @id @default(cuid())
+  qty         Decimal   @db.Decimal(10, 2)
+  unit        String    @default("kg")
+  notes       String?
+  
+  targetPrice Decimal?  @db.Decimal(10, 2)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  rfqId       String
+  rfq         Rfq       @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  
+  skuId       String
+  sku         Sku       @relation(fields: [skuId], references: [id])
+
+  @@index([rfqId])
+  @@map("rfq_line_items")
+}
+
+model Quote {
+  id                String      @id @default(cuid())
+  quoteNumber       String      @unique
+  
+  subtotal          Decimal     @db.Decimal(12, 2)
+  shippingCost      Decimal?    @db.Decimal(10, 2)
+  taxAmount         Decimal?    @db.Decimal(10, 2)
+  totalAmount       Decimal     @db.Decimal(12, 2)
+  currency          String      @default("USD")
+  
+  incoterm          Incoterm
+  estimatedLeadDays Int?
+  
+  notes             String?
+  termsConditions   String?
+  
+  validUntil        DateTime
+  status            QuoteStatus @default(DRAFT)
+  
+  submittedAt       DateTime?
+  acceptedAt        DateTime?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  rfqId             String
+  rfq               Rfq         @relation(fields: [rfqId], references: [id])
+  
+  sellerProfileId   String
+  sellerProfile     SellerProfile @relation(fields: [sellerProfileId], references: [id])
+  
+  lineItems              QuoteLineItem[]
+  order                  Order?
+  complianceEvaluations  ComplianceEvaluation[]
+
+  @@index([rfqId])
+  @@index([sellerProfileId])
+  @@index([status])
+  @@map("quotes")
+}
+
+model QuoteLineItem {
+  id          String    @id @default(cuid())
+  qty         Decimal   @db.Decimal(10, 2)
+  unit        String    @default("kg")
+  unitPrice   Decimal   @db.Decimal(10, 2)
+  totalPrice  Decimal   @db.Decimal(12, 2)
+  notes       String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  quoteId     String
+  quote       Quote     @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  
+  skuId       String
+  sku         Sku       @relation(fields: [skuId], references: [id])
+
+  @@index([quoteId])
+  @@map("quote_line_items")
+}
+
+// ==================== ORDERS ====================
+
+model Order {
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique
+  
+  subtotal        Decimal       @db.Decimal(12, 2)
+  shippingCost    Decimal?      @db.Decimal(10, 2)
+  taxAmount       Decimal?      @db.Decimal(10, 2)
+  totalAmount     Decimal       @db.Decimal(12, 2)
+  currency        String        @default("USD")
+  
+  status          OrderStatus   @default(PENDING_PAYMENT)
+  
+  shipToName      String
+  shipToLine1     String
+  shipToLine2     String?
+  shipToCity      String
+  shipToState     String?
+  shipToPostal    String
+  shipToCountry   String
+  
+  trackingNumber  String?
+  carrier         String?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  
+  buyerNotes      String?
+  sellerNotes     String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  quoteId         String        @unique
+  quote           Quote         @relation(fields: [quoteId], references: [id])
+  
+  lineItems              OrderLineItem[]
+  statusHistory          OrderStatusHistory[]
+  complianceEvaluations  ComplianceEvaluation[]
+
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderLineItem {
+  id          String    @id @default(cuid())
+  qty         Decimal   @db.Decimal(10, 2)
+  unit        String    @default("kg")
+  unitPrice   Decimal   @db.Decimal(10, 2)
+  totalPrice  Decimal   @db.Decimal(12, 2)
+  
+  createdAt   DateTime  @default(now())
+  
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  skuId       String
+  sku         Sku       @relation(fields: [skuId], references: [id])
+
+  @@index([orderId])
+  @@map("order_line_items")
+}
+
+model OrderStatusHistory {
+  id          String      @id @default(cuid())
+  status      OrderStatus
+  notes       String?
+  changedBy   String?
+  
+  createdAt   DateTime    @default(now())
+  
+  orderId     String
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_status_history")
+}
+
+// ==================== MESSAGING ====================
+
+model MessageThread {
+  id          String    @id @default(cuid())
+  subject     String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  rfqId       String    @unique
+  rfq         Rfq       @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  
+  messages    Message[]
+
+  @@map("message_threads")
+}
+
+model Message {
+  id          String    @id @default(cuid())
+  body        String
+  isRead      Boolean   @default(false)
+  readAt      DateTime?
+  
+  createdAt   DateTime  @default(now())
+  
+  threadId    String
+  thread      MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  
+  senderUserId String
+  sender      User      @relation(fields: [senderUserId], references: [id])
+
+  @@index([threadId])
+  @@index([senderUserId])
+  @@map("messages")
+}
+
+// ==================== COMPLIANCE ====================
+
+model ComplianceRule {
+  id                      String    @id @default(cuid())
+  destinationCountry      String    // ISO country code (2 letters)
+  productCategory         String    // e.g., "matcha", "tea", "organic-tea"
+
+  minDeclaredValueUsd     Decimal?  @db.Decimal(12, 2)  // null = no threshold
+  minWeightKg             Decimal?  @db.Decimal(10, 2)  // null = no threshold
+  maxWeightKg             Decimal?  @db.Decimal(10, 2)  // null = no threshold
+
+  requiredCertifications  String[]  // e.g., ["JAS", "organic"]
+  requiredDocs            String[]  // e.g., ["packing-list", "invoice", "phytosanitary"]
+  warnings                String[]  // e.g., "Perishable item - check lead time"
+  disclaimerText          String    // Legal disclaimer shown to users
+
+  isActive                Boolean   @default(true)
+
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  createdByAdminId        String
+  createdByAdmin          User      @relation("ComplianceRuleCreator", fields: [createdByAdminId], references: [id])
+
+  @@index([destinationCountry])
+  @@index([productCategory])
+  @@index([isActive])
+  @@index([destinationCountry, productCategory])
+  @@map("compliance_rules")
+}
+
+model ComplianceEvaluation {
+  id                  String    @id @default(cuid())
+
+  rfqId               String?
+  rfq                 Rfq?      @relation(fields: [rfqId], references: [id], onDelete: SetNull)
+
+  quoteId             String?
+  quote               Quote?    @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+
+  orderId             String?
+  order               Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  destinationCountry  String
+  productCategory     String
+  declaredValueUsd    Decimal   @db.Decimal(12, 2)
+  weightKg            Decimal   @db.Decimal(10, 2)
+
+  appliedRuleIds      String[]  // Which ComplianceRules matched
+  requiredDocs        String[]
+  warnings            String[]
+  flags               String[]
+  disclaimerText      String
+  complianceLevel     String    // 'low' | 'medium' | 'high'
+
+  evaluatedAt         DateTime  @default(now())
+
+  @@index([rfqId])
+  @@index([quoteId])
+  @@index([orderId])
+  @@index([destinationCountry])
+  @@map("compliance_evaluations")
+}
+
+// ==================== CONTENT ====================
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  sortOrder   Int       @default(0)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  posts       InsightsPost[]
+
+  @@map("categories")
+}
+
+model Tag {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  
+  createdAt   DateTime  @default(now())
+  
+  posts       InsightsPost[]
+
+  @@map("tags")
+}
+
+model InsightsPost {
+  id              String    @id @default(cuid())
+  title           String
+  slug            String    @unique
+  excerpt         String?
+  content         String
+  
+  featuredImage   String?
+  
+  isPublished     Boolean   @default(false)
+  publishedAt     DateTime?
+  
+  metaTitle       String?
+  metaDescription String?
+  
+  viewCount       Int       @default(0)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  authorId        String
+  author          User      @relation(fields: [authorId], references: [id])
+  
+  categoryId      String
+  category        Category  @relation(fields: [categoryId], references: [id])
+  
+  tags            Tag[]
+
+  @@index([isPublished])
+  @@index([categoryId])
+  @@index([authorId])
+  @@map("insights_posts")
+}
+
+// ==================== TRENDS ====================
+
+model TrendSeries {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  type        TrendSeriesType
+  unit        String
+  
+  isActive    Boolean         @default(true)
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  regionId    String?
+  region      Region?         @relation(fields: [regionId], references: [id])
+  
+  dataPoints  TrendPoint[]
+
+  @@index([type])
+  @@index([regionId])
+  @@map("trend_series")
+}
+
+model TrendPoint {
+  id          String      @id @default(cuid())
+  date        DateTime
+  value       Decimal     @db.Decimal(12, 4)
+  unit        String
+  metadata    Json?
+
+  createdAt   DateTime    @default(now())
+
+  seriesId    String
+  series      TrendSeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@index([seriesId])
+  @@index([date])
+  @@map("trend_points")
+}
+
+// ==================== AUDIT LOGGING ====================
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  PUBLISH
+  UNPUBLISH
+  TOGGLE
+  APPROVE
+  REJECT
+  LOGIN
+  LOGOUT
+}
+
+model AuditLog {
+  id              String      @id @default(cuid())
+  action          AuditAction
+  entityType      String      // e.g., "ComplianceRule", "InsightsPost", "TrendSeries"
+  entityId        String?     // ID of the affected entity
+
+  description     String      // Human-readable description of the action
+  metadata        Json?       // Additional context (old values, new values, etc.)
+
+  ipAddress       String?
+  userAgent       String?
+
+  createdAt       DateTime    @default(now())
+
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

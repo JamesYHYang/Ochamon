@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker-compose restart:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npx jest --testPathPattern=\"\\(rfq|quote|order|messaging\\)\\\\.service\\\\.spec\\\\.ts\" --verbose)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(pnpm add:*)",
+      "Bash(npx jest:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm list:*)",
+      "Bash(npx nest build:*)",
+      "Bash(npx next build)",
+      "Bash(powershell -Command:*)",
+      "Bash(pnpm install:*)",
+      "Bash(docker ps:*)",
+      "Bash(node --version:*)",
+      "Bash(npm run db:status:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test:*)",
+      "Bash(npm install)",
+      "Bash(pnpm run db:reset:*)",
+      "Bash(pnpm run db:seed:*)"
+    ]
+  }
+}
