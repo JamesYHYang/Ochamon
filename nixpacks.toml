@@ -1,0 +1,8 @@
+﻿[phases.install]
+cmds = ["pnpm install --no-frozen-lockfile"]
+
+[phases.build]
+cmds = ["pnpm --filter @matcha/api build"]
+
+[start]
+cmd = "pnpm --filter @matcha/api start:prod"
