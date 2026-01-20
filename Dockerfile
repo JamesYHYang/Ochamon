@@ -9,17 +9,17 @@ RUN corepack prepare pnpm@10.28.1 --activate
 # Install OpenSSL for Prisma
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-# Copy ALL source files first (so tsconfig.json and source files exist)
+# Copy ALL source files first
 COPY . .
 
-# Install dependencies (postinstall will now work)
+# Install dependencies
 RUN pnpm install --no-frozen-lockfile
 
-# Build shared package (may already be built by postinstall, but ensure it)
+# Build shared package
 RUN pnpm --filter @matcha/shared build
 
-# Generate Prisma client
-RUN pnpm --filter @matcha/api prisma generate
+# Generate Prisma client (using pnpm exec to run the binary)
+RUN pnpm --filter @matcha/api exec prisma generate
 
 # Build API
 RUN pnpm --filter @matcha/api build
