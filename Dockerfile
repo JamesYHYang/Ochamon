@@ -27,13 +27,11 @@ RUN pnpm --filter @matcha/api build
 # Production stage
 FROM node:20-slim AS runner
 
-# Install OpenSSL for Prisma runtime
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-# Set working directory to the API folder
 WORKDIR /app/apps/api
 
-# Copy the entire app structure (needed for monorepo imports)
+# Copy built files
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/prisma ./prisma
 COPY --from=builder /app/apps/api/package.json ./
@@ -42,4 +40,5 @@ COPY --from=builder /app/packages/shared /app/packages/shared
 
 EXPOSE 3001
 
-CMD ["node", "dist/main.js"]
+# Correct path: dist/src/main.js
+CMD ["node", "dist/src/main.js"]
