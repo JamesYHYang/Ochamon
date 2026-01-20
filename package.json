@@ -2,6 +2,7 @@
   "name": "matcha-platform",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@10.28.1",
   "scripts": {
     "dev": "pnpm run --parallel dev",
     "dev:api": "pnpm --filter @matcha/api dev",
