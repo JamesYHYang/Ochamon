@@ -2,11 +2,7 @@
 cmds = ["pnpm install --no-frozen-lockfile"]
 
 [phases.build]
-cmds = [
-  "pnpm --filter @matcha/shared build",
-  "pnpm --filter @matcha/api prisma generate",
-  "pnpm --filter @matcha/api build"
-]
+cmds = ["pnpm run build:api"]
 
 [start]
 cmd = "pnpm --filter @matcha/api start:prod"

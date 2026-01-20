@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "matcha-platform",
   "version": "1.0.0",
   "private": true,
@@ -6,9 +6,10 @@
     "dev": "pnpm run --parallel dev",
     "dev:api": "pnpm --filter @matcha/api dev",
     "dev:web": "pnpm --filter @matcha/web dev",
-    "build": "pnpm run --parallel build",
-    "build:api": "pnpm --filter @matcha/api build",
-    "build:web": "pnpm --filter @matcha/web build",
+    "build": "pnpm --filter @matcha/shared build && pnpm run --parallel build:packages",
+    "build:packages": "pnpm --filter @matcha/api build && pnpm --filter @matcha/web build",
+    "build:api": "pnpm --filter @matcha/shared build && pnpm --filter @matcha/api prisma generate && pnpm --filter @matcha/api build",
+    "build:web": "pnpm --filter @matcha/shared build && pnpm --filter @matcha/web build",
     "db:generate": "pnpm --filter @matcha/api db:generate",
     "db:migrate": "pnpm --filter @matcha/api db:migrate",
     "db:seed": "pnpm --filter @matcha/api db:seed",
@@ -16,7 +17,8 @@
     "test": "pnpm run --parallel test",
     "test:api": "pnpm --filter @matcha/api test",
     "lint": "pnpm run --parallel lint",
-    "clean": "npx rimraf node_modules apps/*/node_modules packages/*/node_modules"
+    "clean": "npx rimraf node_modules apps/*/node_modules packages/*/node_modules",
+    "postinstall": "pnpm --filter @matcha/shared build"
   },
   "devDependencies": {
     "typescript": "^5.3.3"
