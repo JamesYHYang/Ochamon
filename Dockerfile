@@ -24,21 +24,16 @@ RUN pnpm --filter @matcha/api exec prisma generate
 # Build API
 RUN pnpm --filter @matcha/api build
 
-# Production stage
+# Production stage - keep full monorepo structure for pnpm
 FROM node:20-slim AS runner
 
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app/apps/api
+# Copy entire app (preserves pnpm monorepo node_modules structure)
+COPY --from=builder /app /app
 
-# Copy built files
-COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=builder /app/apps/api/prisma ./prisma
-COPY --from=builder /app/apps/api/package.json ./
-COPY --from=builder /app/node_modules /app/node_modules
-COPY --from=builder /app/packages/shared /app/packages/shared
+WORKDIR /app/apps/api
 
 EXPOSE 3001
 
-# Correct path: dist/src/main.js
 CMD ["node", "dist/src/main.js"]
