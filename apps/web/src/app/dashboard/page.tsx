@@ -74,7 +74,7 @@ function BuyerDashboard() {
               <div className="text-sm text-gray-500">Find matcha suppliers</div>
             </a>
             <a
-              href="/dashboard/rfqs/new"
+              href="/buyer/rfqs/new"
               className="flex-1 p-4 border rounded-lg hover:bg-gray-50 text-center"
             >
               <div className="text-2xl mb-2">📝</div>
@@ -238,3 +238,4 @@ function AdminDashboard() {
     </div>
   );
 }
+

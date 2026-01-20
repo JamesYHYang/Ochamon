@@ -64,7 +64,7 @@ export default function MarketplacePage() {
           }
         }
 
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/marketplace/products`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products`, {
           headers,
         });
 
@@ -73,7 +73,7 @@ export default function MarketplacePage() {
         }
 
         const data = await res.json();
-        setProducts(Array.isArray(data) ? data : data.products || []);
+        setProducts(Array.isArray(data) ? data : data.data || data.products || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
@@ -269,3 +269,4 @@ export default function MarketplacePage() {
     </div>
   );
 }
+

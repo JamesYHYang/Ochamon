@@ -1,16 +1,17 @@
-import {
-  PrismaClient,
-  UserRole,
-  VerificationStatus,
-  ProductStatus,
-  TrendSeriesType,
-  DocumentType,
-  Incoterm,
-} from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
+// Matcha Trading Platform - Database Seed Script
+// This file creates demo data for development and testing
+
+import { PrismaClient, UserRole, ProductStatus, RfqStatus, QuoteStatus, Incoterm, CartType, CartStatus, DocumentType, TrendSeriesType } from '@prisma/client';
+import * as bcryptjs from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// Helper to hash passwords
+async function hashPassword(password: string): Promise<string> {
+  return bcryptjs.hash(password, 10);
+}
+
+// Helper to create slug from name
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -21,21 +22,18 @@ function slugify(text: string): string {
 async function main() {
   console.log('🌱 Starting seed...\n');
 
-  // ==================== CLEANUP ====================
-  console.log('🧹 Cleaning database...');
+  // Clear existing data (in reverse order of dependencies)
+  console.log('🧹 Clearing existing data...');
   await prisma.auditLog.deleteMany();
-  await prisma.complianceEvaluation.deleteMany();
   await prisma.trendPoint.deleteMany();
   await prisma.trendSeries.deleteMany();
-  await prisma.insightsPost.deleteMany();
-  await prisma.tag.deleteMany();
-  await prisma.category.deleteMany();
-  await prisma.complianceRule.deleteMany();
   await prisma.message.deleteMany();
   await prisma.messageThread.deleteMany();
   await prisma.orderStatusHistory.deleteMany();
   await prisma.orderLineItem.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.complianceEvaluation.deleteMany();
+  await prisma.complianceRule.deleteMany();
   await prisma.quoteLineItem.deleteMany();
   await prisma.quote.deleteMany();
   await prisma.rfqLineItem.deleteMany();
@@ -43,630 +41,787 @@ async function main() {
   await prisma.cartItem.deleteMany();
   await prisma.cart.deleteMany();
   await prisma.shortlist.deleteMany();
-  await prisma.priceTier.deleteMany();
   await prisma.inventory.deleteMany();
+  await prisma.priceTier.deleteMany();
+  await prisma.sku.deleteMany();
   await prisma.productDocument.deleteMany();
   await prisma.productImage.deleteMany();
-  await prisma.sku.deleteMany();
   await prisma.product.deleteMany();
-  await prisma.sellerProfile.deleteMany();
-  await prisma.buyerProfile.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.address.deleteMany();
-  await prisma.company.deleteMany();
   await prisma.gradeType.deleteMany();
   await prisma.region.deleteMany();
+  await prisma.insightsPost.deleteMany();
+  await prisma.tag.deleteMany();
+  await prisma.category.deleteMany();
+  await prisma.buyerProfile.deleteMany();
+  await prisma.sellerProfile.deleteMany();
+  await prisma.address.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.company.deleteMany();
 
-  // ==================== REGIONS (6) ====================
-  console.log('\n🗺️  Creating regions...');
+  // ==================== REGIONS ====================
+  console.log('📍 Creating regions...');
   const regions = await Promise.all([
     prisma.region.create({
-      data: { name: 'Uji, Kyoto', country: 'JP', description: 'Historic matcha region, premium ceremonial grades' },
+      data: {
+        name: 'Uji, Kyoto',
+        country: 'Japan',
+        description: 'The most prestigious matcha-producing region, known for over 800 years of tea cultivation.',
+      },
     }),
     prisma.region.create({
-      data: { name: 'Nishio, Aichi', country: 'JP', description: 'Largest matcha producing region in Japan' },
+      data: {
+        name: 'Nishio, Aichi',
+        country: 'Japan',
+        description: 'Produces approximately 60% of Japan\'s matcha, known for consistent quality.',
+      },
     }),
     prisma.region.create({
-      data: { name: 'Kagoshima', country: 'JP', description: 'Southern Japan, early harvest, robust flavor' },
+      data: {
+        name: 'Shizuoka',
+        country: 'Japan',
+        description: 'Japan\'s largest tea-producing region with diverse microclimates.',
+      },
     }),
     prisma.region.create({
-      data: { name: 'Shizuoka', country: 'JP', description: 'Famous for sencha, growing matcha production' },
+      data: {
+        name: 'Kagoshima',
+        country: 'Japan',
+        description: 'Southern region with early harvests and unique volcanic soil.',
+      },
     }),
     prisma.region.create({
-      data: { name: 'Fukuoka', country: 'JP', description: 'Yame region known for premium gyokuro and matcha' },
-    }),
-    prisma.region.create({
-      data: { name: 'Zhejiang', country: 'CN', description: 'Chinese matcha production hub' },
+      data: {
+        name: 'Kyoto',
+        country: 'Japan',
+        description: 'Historical center of Japanese tea culture with multiple growing areas.',
+      },
     }),
   ]);
-  console.log(`   ✅ Created ${regions.length} regions`);
 
-  // ==================== GRADE TYPES (6) ====================
-  console.log('\n🏆 Creating grade types...');
-  const grades = await Promise.all([
+  // ==================== GRADE TYPES ====================
+  console.log('🏆 Creating grade types...');
+  const gradeTypes = await Promise.all([
     prisma.gradeType.create({
-      data: { name: 'Ceremonial', code: 'CEREMONIAL', sortOrder: 1, description: 'Highest quality for traditional tea ceremony' },
+      data: {
+        name: 'Competition Grade',
+        code: 'COMP',
+        description: 'Highest quality reserved for tea competitions. Hand-picked, stone-ground by master craftsmen.',
+        sortOrder: 1,
+      },
     }),
     prisma.gradeType.create({
-      data: { name: 'Premium', code: 'PREMIUM', sortOrder: 2, description: 'High quality for drinking and lattes' },
+      data: {
+        name: 'Ceremonial Grade',
+        code: 'CERE',
+        description: 'Premium quality suitable for traditional Japanese tea ceremonies.',
+        sortOrder: 2,
+      },
     }),
     prisma.gradeType.create({
-      data: { name: 'Cafe Grade', code: 'CAFE', sortOrder: 3, description: 'Optimized for milk-based beverages' },
+      data: {
+        name: 'Premium Grade',
+        code: 'PREM',
+        description: 'High-quality matcha suitable for daily drinking and premium beverages.',
+        sortOrder: 3,
+      },
     }),
     prisma.gradeType.create({
-      data: { name: 'Culinary A', code: 'CULINARY_A', sortOrder: 4, description: 'Top culinary grade for baking and cooking' },
-    }),
-    prisma.gradeType.create({
-      data: { name: 'Culinary B', code: 'CULINARY_B', sortOrder: 5, description: 'Standard culinary grade for food manufacturing' },
-    }),
-    prisma.gradeType.create({
-      data: { name: 'Industrial', code: 'INDUSTRIAL', sortOrder: 6, description: 'Bulk grade for extracts and supplements' },
+      data: {
+        name: 'Culinary Grade',
+        code: 'CULI',
+        description: 'Designed for cooking, baking, and blended beverages.',
+        sortOrder: 4,
+      },
     }),
   ]);
-  console.log(`   ✅ Created ${grades.length} grade types`);
 
-  // ==================== ADMIN USER ====================
-  console.log('\n👤 Creating admin...');
-  const adminPwd = await bcrypt.hash('Admin123!', 12);
-  const admin = await prisma.user.create({
+  // ==================== COMPANIES ====================
+  console.log('🏢 Creating companies...');
+  const companies = await Promise.all([
+    // Seller Companies
+    prisma.company.create({
+      data: {
+        name: 'Kyoto Matcha Farm',
+        legalName: 'Kyoto Matcha Farm Co., Ltd.',
+        taxId: 'JP1234567890',
+        website: 'https://kyoto-matcha.example.com',
+        phone: '+81-75-123-4567',
+        email: 'info@kyoto-matcha.example.com',
+        description: 'Family-owned matcha farm in Uji, Kyoto since 1892. Specializing in ceremonial-grade matcha.',
+        addresses: {
+          create: {
+            label: 'Main Farm',
+            line1: '123 Tea Garden Road',
+            city: 'Uji',
+            state: 'Kyoto',
+            postalCode: '611-0011',
+            country: 'JP',
+            isDefault: true,
+          },
+        },
+      },
+    }),
+    prisma.company.create({
+      data: {
+        name: 'Nishio Green Tea Co.',
+        legalName: 'Nishio Green Tea Corporation',
+        taxId: 'JP0987654321',
+        website: 'https://nishio-tea.example.com',
+        phone: '+81-566-98-7654',
+        email: 'sales@nishio-tea.example.com',
+        description: 'Large-scale matcha producer in Nishio, Aichi. Organic certified with modern facilities.',
+        addresses: {
+          create: {
+            label: 'Headquarters',
+            line1: '456 Green Leaf Avenue',
+            city: 'Nishio',
+            state: 'Aichi',
+            postalCode: '445-0073',
+            country: 'JP',
+            isDefault: true,
+          },
+        },
+      },
+    }),
+    // Buyer Companies
+    prisma.company.create({
+      data: {
+        name: 'Urban Tea Co.',
+        legalName: 'Urban Tea Company LLC',
+        taxId: 'US123456789',
+        website: 'https://urbantea.example.com',
+        phone: '+1-415-555-0123',
+        email: 'purchasing@urbantea.example.com',
+        description: 'Premium tea café chain in the San Francisco Bay Area.',
+        addresses: {
+          create: {
+            label: 'Corporate Office',
+            line1: '789 Market Street',
+            line2: 'Suite 500',
+            city: 'San Francisco',
+            state: 'CA',
+            postalCode: '94103',
+            country: 'US',
+            isDefault: true,
+          },
+        },
+      },
+    }),
+    prisma.company.create({
+      data: {
+        name: 'Healthy Bites Cafe',
+        legalName: 'Healthy Bites Inc.',
+        taxId: 'US987654321',
+        website: 'https://healthybites.example.com',
+        phone: '+1-212-555-0456',
+        email: 'orders@healthybites.example.com',
+        description: 'Health-focused café chain specializing in organic beverages and foods.',
+        addresses: {
+          create: {
+            label: 'Main Office',
+            line1: '321 Broadway',
+            city: 'New York',
+            state: 'NY',
+            postalCode: '10007',
+            country: 'US',
+            isDefault: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  // ==================== USERS ====================
+  console.log('👤 Creating users...');
+  const hashedPassword = await hashPassword('Admin123!');
+  const sellerPassword = await hashPassword('Seller123!');
+  const buyerPassword = await hashPassword('Buyer123!');
+
+  // Admin user
+  const adminUser = await prisma.user.create({
     data: {
       email: 'admin@matcha-trade.com',
-      passwordHash: adminPwd,
-      name: 'Platform Admin',
+      passwordHash: hashedPassword,
+      name: 'Admin User',
       role: UserRole.ADMIN,
     },
   });
-  console.log(`   ✅ Admin: ${admin.email}`);
 
-  // ==================== SELLER 1 ====================
-  console.log('\n🏭 Creating Seller 1...');
-  const seller1Pwd = await bcrypt.hash('Seller123!', 12);
-  const seller1Company = await prisma.company.create({
-    data: {
-      name: 'Kyoto Matcha Masters',
-      legalName: 'Kyoto Matcha Masters Co., Ltd.',
-      taxId: 'JP1234567890123',
-      website: 'https://kyoto-matcha-masters.example.jp',
-      phone: '+81-75-123-4567',
-      email: 'info@kyoto-matcha-masters.example.jp',
-      description: 'Fourth-generation family tea farm in Uji, Kyoto. Specializing in stone-ground ceremonial matcha.',
-      addresses: {
-        create: [
-          { label: 'Headquarters', line1: '123 Uji Tea Road', city: 'Uji', state: 'Kyoto', postalCode: '611-0021', country: 'JP', isDefault: true },
-          { label: 'Warehouse', line1: '456 Logistics Park', city: 'Osaka', state: 'Osaka', postalCode: '530-0001', country: 'JP' },
-        ],
-      },
-    },
-  });
-
+  // Seller users
   const seller1User = await prisma.user.create({
     data: {
       email: 'seller@kyoto-matcha.com',
-      passwordHash: seller1Pwd,
-      name: 'Takeshi Yamamoto',
+      passwordHash: sellerPassword,
+      name: 'Tanaka Kenji',
       role: UserRole.SELLER,
-      companyId: seller1Company.id,
-    },
-  });
-
-  const seller1Profile = await prisma.sellerProfile.create({
-    data: {
-      userId: seller1User.id,
-      companyId: seller1Company.id,
-      verificationStatus: VerificationStatus.APPROVED,
-      verifiedAt: new Date(),
-      yearsInBusiness: 85,
-      annualCapacityKg: 50000,
-      exportLicenseNo: 'JP-EXP-2024-001',
-      isOrganic: true,
-      isJasCertified: true,
-      isUsdaCertified: true,
-      isEuCertified: true,
-      bio: 'Our family has cultivated premium matcha in Uji for four generations, using traditional shade-growing and stone-grinding techniques.',
-    },
-  });
-  console.log(`   ✅ Seller 1: ${seller1User.email}`);
-
-  // ==================== SELLER 2 ====================
-  console.log('\n🏭 Creating Seller 2...');
-  const seller2Pwd = await bcrypt.hash('Seller123!', 12);
-  const seller2Company = await prisma.company.create({
-    data: {
-      name: 'Nishio Green Industries',
-      legalName: 'Nishio Green Tea Industries K.K.',
-      taxId: 'JP9876543210987',
-      website: 'https://nishio-green.example.jp',
-      phone: '+81-566-98-7654',
-      email: 'sales@nishio-green.example.jp',
-      description: 'Large-scale matcha producer specializing in culinary and food service grades.',
-      addresses: {
-        create: [
-          { label: 'Factory', line1: '789 Industrial Ave', city: 'Nishio', state: 'Aichi', postalCode: '445-0000', country: 'JP', isDefault: true },
-        ],
-      },
+      companyId: companies[0].id,
     },
   });
 
   const seller2User = await prisma.user.create({
     data: {
       email: 'seller@nishio-green.com',
-      passwordHash: seller2Pwd,
-      name: 'Kenji Tanaka',
+      passwordHash: sellerPassword,
+      name: 'Yamamoto Akiko',
       role: UserRole.SELLER,
-      companyId: seller2Company.id,
+      companyId: companies[1].id,
     },
   });
 
-  const seller2Profile = await prisma.sellerProfile.create({
-    data: {
-      userId: seller2User.id,
-      companyId: seller2Company.id,
-      verificationStatus: VerificationStatus.APPROVED,
-      verifiedAt: new Date(),
-      yearsInBusiness: 45,
-      annualCapacityKg: 200000,
-      exportLicenseNo: 'JP-EXP-2024-042',
-      isOrganic: false,
-      isJasCertified: true,
-      isUsdaCertified: false,
-      isEuCertified: true,
-      bio: 'Leading producer of culinary matcha with modern facilities capable of large volume orders.',
-    },
-  });
-  console.log(`   ✅ Seller 2: ${seller2User.email}`);
-
-  // ==================== BUYER 1 ====================
-  console.log('\n🛒 Creating Buyer 1...');
-  const buyer1Pwd = await bcrypt.hash('Buyer123!', 12);
-  const buyer1Company = await prisma.company.create({
-    data: {
-      name: 'Urban Tea Collective',
-      legalName: 'Urban Tea Collective LLC',
-      taxId: '12-3456789',
-      website: 'https://urbanteacollective.example.com',
-      phone: '+1-415-555-0100',
-      email: 'purchasing@urbanteacollective.example.com',
-      description: 'Specialty tea cafe chain with 20 locations across California.',
-      addresses: {
-        create: [
-          { label: 'HQ', line1: '100 Market St', line2: 'Suite 500', city: 'San Francisco', state: 'CA', postalCode: '94102', country: 'US', isDefault: true },
-        ],
-      },
-    },
-  });
-
+  // Buyer users
   const buyer1User = await prisma.user.create({
     data: {
       email: 'buyer@urbantea.com',
-      passwordHash: buyer1Pwd,
-      name: 'Sarah Chen',
+      passwordHash: buyerPassword,
+      name: 'Sarah Johnson',
       role: UserRole.BUYER,
-      companyId: buyer1Company.id,
-    },
-  });
-
-  const buyer1Profile = await prisma.buyerProfile.create({
-    data: {
-      userId: buyer1User.id,
-      companyId: buyer1Company.id,
-      businessType: 'Cafe Chain',
-      annualVolumeKg: 2000,
-      preferredIncoterm: Incoterm.DDP,
-    },
-  });
-  console.log(`   ✅ Buyer 1: ${buyer1User.email}`);
-
-  // ==================== BUYER 2 ====================
-  console.log('\n🛒 Creating Buyer 2...');
-  const buyer2Pwd = await bcrypt.hash('Buyer123!', 12);
-  const buyer2Company = await prisma.company.create({
-    data: {
-      name: 'HealthyBites Manufacturing',
-      legalName: 'HealthyBites Food Corp',
-      taxId: '98-7654321',
-      website: 'https://healthybites.example.com',
-      phone: '+1-212-555-0200',
-      email: 'sourcing@healthybites.example.com',
-      description: 'Food manufacturer specializing in healthy snacks and beverages.',
-      addresses: {
-        create: [
-          { label: 'Factory', line1: '500 Industrial Blvd', city: 'Newark', state: 'NJ', postalCode: '07102', country: 'US', isDefault: true },
-        ],
-      },
+      companyId: companies[2].id,
     },
   });
 
   const buyer2User = await prisma.user.create({
     data: {
       email: 'buyer@healthybites.com',
-      passwordHash: buyer2Pwd,
-      name: 'Michael Rodriguez',
+      passwordHash: buyerPassword,
+      name: 'Michael Chen',
       role: UserRole.BUYER,
-      companyId: buyer2Company.id,
+      companyId: companies[3].id,
     },
   });
 
-  const buyer2Profile = await prisma.buyerProfile.create({
-    data: {
-      userId: buyer2User.id,
-      companyId: buyer2Company.id,
-      businessType: 'Food Manufacturer',
-      annualVolumeKg: 15000,
-      preferredIncoterm: Incoterm.FOB,
+  // ==================== SELLER PROFILES ====================
+  console.log('🏪 Creating seller profiles...');
+  const sellerProfiles = await Promise.all([
+    prisma.sellerProfile.create({
+      data: {
+        userId: seller1User.id,
+        companyId: companies[0].id,
+        verificationStatus: 'APPROVED',
+        verifiedAt: new Date(),
+        yearsInBusiness: 130,
+        annualCapacityKg: 5000,
+        exportLicenseNo: 'JP-EXP-2024-001',
+        isOrganic: true,
+        isJasCertified: true,
+        isUsdaCertified: true,
+        isEuCertified: true,
+        bio: 'Fifth-generation matcha farmers dedicated to preserving traditional cultivation methods while embracing sustainable practices.',
+      },
+    }),
+    prisma.sellerProfile.create({
+      data: {
+        userId: seller2User.id,
+        companyId: companies[1].id,
+        verificationStatus: 'APPROVED',
+        verifiedAt: new Date(),
+        yearsInBusiness: 45,
+        annualCapacityKg: 50000,
+        exportLicenseNo: 'JP-EXP-2024-002',
+        isOrganic: true,
+        isJasCertified: true,
+        isUsdaCertified: false,
+        isEuCertified: true,
+        bio: 'Modern matcha production facility with traditional stone grinding and state-of-the-art quality control.',
+      },
+    }),
+  ]);
+
+  // ==================== BUYER PROFILES ====================
+  console.log('🛒 Creating buyer profiles...');
+  const buyerProfiles = await Promise.all([
+    prisma.buyerProfile.create({
+      data: {
+        userId: buyer1User.id,
+        companyId: companies[2].id,
+        businessType: 'Cafe Chain',
+        annualVolumeKg: 500,
+        preferredIncoterm: Incoterm.DDP,
+      },
+    }),
+    prisma.buyerProfile.create({
+      data: {
+        userId: buyer2User.id,
+        companyId: companies[3].id,
+        businessType: 'Restaurant Chain',
+        annualVolumeKg: 300,
+        preferredIncoterm: Incoterm.CIF,
+      },
+    }),
+  ]);
+
+  // ==================== PRODUCTS ====================
+  console.log('🍵 Creating products...');
+  
+  // Product data with image and document references
+  const productData = [
+    {
+      name: 'Premium Ceremonial Uji',
+      slug: 'premium-ceremonial-uji',
+      description: 'Our finest ceremonial grade matcha from first harvest leaves in Uji, Kyoto. Stone-ground to a silky 1000+ mesh powder with an intense umami flavor and vibrant green color.',
+      shortDesc: 'First harvest ceremonial matcha from Uji',
+      leadTimeDays: 14,
+      moqKg: 5,
+      certifications: ['JAS Organic', 'USDA Organic', 'EU Organic'],
+      status: ProductStatus.ACTIVE,
+      isFeatured: true,
+      sellerId: sellerProfiles[0].id,
+      regionId: regions[0].id,
+      gradeTypeId: gradeTypes[1].id,
+      skus: [
+        { sku: 'PCU-30G-TIN', name: '30g Tin', packagingType: 'Tin', netWeightG: 30, pricePerUnit: 45 },
+        { sku: 'PCU-100G-POUCH', name: '100g Pouch', packagingType: 'Pouch', netWeightG: 100, pricePerUnit: 120 },
+        { sku: 'PCU-500G-BAG', name: '500g Bulk Bag', packagingType: 'Bag', netWeightG: 500, pricePerUnit: 500 },
+        { sku: 'PCU-1KG-BAG', name: '1kg Bulk Bag', packagingType: 'Bag', netWeightG: 1000, pricePerUnit: 900 },
+      ],
     },
-  });
-  console.log(`   ✅ Buyer 2: ${buyer2User.email}`);
-
-  // ==================== PRODUCTS & SKUS ====================
-  console.log('\n🍵 Creating products and SKUs...');
-
-  const productsData = [
-    // Seller 1 products (5)
-    { seller: seller1Profile.id, region: regions[0].id, grade: grades[0].id, name: 'Imperial Ceremonial Matcha', moq: 5, lead: 14, certs: ['JAS Organic', 'USDA Organic', 'EU Organic'] },
-    { seller: seller1Profile.id, region: regions[0].id, grade: grades[0].id, name: 'Reserve Ceremonial Matcha', moq: 5, lead: 14, certs: ['JAS Organic'] },
-    { seller: seller1Profile.id, region: regions[0].id, grade: grades[1].id, name: 'Daily Premium Matcha', moq: 10, lead: 10, certs: ['JAS Organic'] },
-    { seller: seller1Profile.id, region: regions[0].id, grade: grades[2].id, name: 'Barista Blend Matcha', moq: 20, lead: 10, certs: [] },
-    { seller: seller1Profile.id, region: regions[4].id, grade: grades[0].id, name: 'Yame Ceremonial Reserve', moq: 5, lead: 21, certs: ['JAS Organic'] },
-    // Seller 2 products (5)
-    { seller: seller2Profile.id, region: regions[1].id, grade: grades[2].id, name: 'Cafe Grade Nishio', moq: 25, lead: 7, certs: [] },
-    { seller: seller2Profile.id, region: regions[1].id, grade: grades[3].id, name: 'Culinary A Nishio', moq: 50, lead: 7, certs: [] },
-    { seller: seller2Profile.id, region: regions[1].id, grade: grades[4].id, name: 'Culinary B Nishio', moq: 100, lead: 5, certs: [] },
-    { seller: seller2Profile.id, region: regions[2].id, grade: grades[3].id, name: 'Kagoshima Culinary', moq: 50, lead: 10, certs: [] },
-    { seller: seller2Profile.id, region: regions[1].id, grade: grades[5].id, name: 'Industrial Extract Grade', moq: 500, lead: 5, certs: [] },
+    {
+      name: 'Organic Culinary Nishio',
+      slug: 'organic-culinary-nishio',
+      description: 'Versatile culinary-grade matcha perfect for lattes, baking, and cooking. Robust flavor that stands up to milk and other ingredients.',
+      shortDesc: 'Organic culinary matcha for cooking and lattes',
+      leadTimeDays: 10,
+      moqKg: 10,
+      certifications: ['JAS Organic', 'USDA Organic'],
+      status: ProductStatus.ACTIVE,
+      isFeatured: true,
+      sellerId: sellerProfiles[1].id,
+      regionId: regions[1].id,
+      gradeTypeId: gradeTypes[3].id,
+      skus: [
+        { sku: 'OCN-100G-POUCH', name: '100g Pouch', packagingType: 'Pouch', netWeightG: 100, pricePerUnit: 25 },
+        { sku: 'OCN-500G-BAG', name: '500g Bulk Bag', packagingType: 'Bag', netWeightG: 500, pricePerUnit: 100 },
+        { sku: 'OCN-1KG-BAG', name: '1kg Bulk Bag', packagingType: 'Bag', netWeightG: 1000, pricePerUnit: 180 },
+      ],
+    },
+    {
+      name: 'Classic Usucha Blend',
+      slug: 'classic-usucha-blend',
+      description: 'A balanced everyday matcha blend perfect for usucha (thin tea) preparation. Smooth taste with pleasant umami notes.',
+      shortDesc: 'Balanced blend for daily drinking',
+      leadTimeDays: 12,
+      moqKg: 5,
+      certifications: ['JAS Organic'],
+      status: ProductStatus.ACTIVE,
+      isFeatured: false,
+      sellerId: sellerProfiles[0].id,
+      regionId: regions[0].id,
+      gradeTypeId: gradeTypes[2].id,
+      skus: [
+        { sku: 'CUB-30G-TIN', name: '30g Tin', packagingType: 'Tin', netWeightG: 30, pricePerUnit: 28 },
+        { sku: 'CUB-100G-POUCH', name: '100g Pouch', packagingType: 'Pouch', netWeightG: 100, pricePerUnit: 75 },
+        { sku: 'CUB-500G-BAG', name: '500g Bulk Bag', packagingType: 'Bag', netWeightG: 500, pricePerUnit: 320 },
+      ],
+    },
+    {
+      name: 'First Harvest Shincha',
+      slug: 'first-harvest-shincha',
+      description: 'Limited edition first harvest matcha, available seasonally. Exceptionally fresh with bright, grassy notes.',
+      shortDesc: 'Seasonal first harvest, limited availability',
+      leadTimeDays: 7,
+      moqKg: 2,
+      certifications: ['JAS Organic', 'Single Origin'],
+      status: ProductStatus.ACTIVE,
+      isFeatured: true,
+      sellerId: sellerProfiles[0].id,
+      regionId: regions[2].id,
+      gradeTypeId: gradeTypes[1].id,
+      skus: [
+        { sku: 'FHS-30G-TIN', name: '30g Tin', packagingType: 'Tin', netWeightG: 30, pricePerUnit: 55 },
+        { sku: 'FHS-100G-POUCH', name: '100g Pouch', packagingType: 'Pouch', netWeightG: 100, pricePerUnit: 150 },
+      ],
+    },
+    {
+      name: 'Daily Matcha Kagoshima',
+      slug: 'daily-matcha-kagoshima',
+      description: 'Affordable everyday matcha from Kagoshima. Great value for high-volume applications.',
+      shortDesc: 'Budget-friendly matcha for daily use',
+      leadTimeDays: 7,
+      moqKg: 25,
+      certifications: [],
+      status: ProductStatus.ACTIVE,
+      isFeatured: false,
+      sellerId: sellerProfiles[1].id,
+      regionId: regions[3].id,
+      gradeTypeId: gradeTypes[3].id,
+      skus: [
+        { sku: 'DMK-500G-BAG', name: '500g Bulk Bag', packagingType: 'Bag', netWeightG: 500, pricePerUnit: 60 },
+        { sku: 'DMK-1KG-BAG', name: '1kg Bulk Bag', packagingType: 'Bag', netWeightG: 1000, pricePerUnit: 100 },
+        { sku: 'DMK-5KG-DRUM', name: '5kg Drum', packagingType: 'Drum', netWeightG: 5000, pricePerUnit: 450 },
+      ],
+    },
+    {
+      name: 'Competition Grade Uji',
+      slug: 'competition-grade-uji',
+      description: 'Ultra-premium competition-grade matcha. Hand-picked and stone-ground by master craftsmen. Reserved for the most discerning tea connoisseurs.',
+      shortDesc: 'Ultra-premium competition quality',
+      leadTimeDays: 21,
+      moqKg: 1,
+      certifications: ['JAS Organic', 'Award Winner', 'Single Estate'],
+      status: ProductStatus.ACTIVE,
+      isFeatured: true,
+      sellerId: sellerProfiles[0].id,
+      regionId: regions[0].id,
+      gradeTypeId: gradeTypes[0].id,
+      skus: [
+        { sku: 'CGU-20G-TIN', name: '20g Tin', packagingType: 'Tin', netWeightG: 20, pricePerUnit: 80 },
+        { sku: 'CGU-40G-TIN', name: '40g Tin', packagingType: 'Tin', netWeightG: 40, pricePerUnit: 150 },
+      ],
+    },
+    {
+      name: 'Organic Ceremonial Kyoto',
+      slug: 'organic-ceremonial-kyoto',
+      description: 'Pure organic ceremonial matcha from Kyoto region farms. Smooth, refined taste suitable for traditional tea preparation.',
+      shortDesc: 'Organic ceremonial matcha from Kyoto',
+      leadTimeDays: 14,
+      moqKg: 5,
+      certifications: ['JAS Organic', 'USDA Organic', 'EU Organic', 'Kosher'],
+      status: ProductStatus.ACTIVE,
+      isFeatured: false,
+      sellerId: sellerProfiles[0].id,
+      regionId: regions[4].id,
+      gradeTypeId: gradeTypes[1].id,
+      skus: [
+        { sku: 'OCK-30G-TIN', name: '30g Tin', packagingType: 'Tin', netWeightG: 30, pricePerUnit: 42 },
+        { sku: 'OCK-100G-POUCH', name: '100g Pouch', packagingType: 'Pouch', netWeightG: 100, pricePerUnit: 110 },
+        { sku: 'OCK-500G-BAG', name: '500g Bulk Bag', packagingType: 'Bag', netWeightG: 500, pricePerUnit: 480 },
+      ],
+    },
+    {
+      name: 'Cafe Blend Matcha',
+      slug: 'cafe-blend-matcha',
+      description: 'Specially blended for café and food service applications. Consistent quality batch-to-batch with strong flavor that holds up in lattes.',
+      shortDesc: 'Consistent blend for food service',
+      leadTimeDays: 7,
+      moqKg: 20,
+      certifications: ['Food Service Grade'],
+      status: ProductStatus.ACTIVE,
+      isFeatured: false,
+      sellerId: sellerProfiles[1].id,
+      regionId: regions[1].id,
+      gradeTypeId: gradeTypes[3].id,
+      skus: [
+        { sku: 'CBM-500G-BAG', name: '500g Bulk Bag', packagingType: 'Bag', netWeightG: 500, pricePerUnit: 70 },
+        { sku: 'CBM-1KG-BAG', name: '1kg Bulk Bag', packagingType: 'Bag', netWeightG: 1000, pricePerUnit: 125 },
+        { sku: 'CBM-5KG-DRUM', name: '5kg Drum', packagingType: 'Drum', netWeightG: 5000, pricePerUnit: 550 },
+      ],
+    },
   ];
 
-  const products: any[] = [];
-  for (const p of productsData) {
+  const createdProducts = [];
+
+  for (const p of productData) {
     const product = await prisma.product.create({
       data: {
         name: p.name,
-        slug: slugify(p.name),
-        description: `Premium ${p.name} sourced directly from Japanese tea farms. Perfect for ${p.grade === grades[0].id ? 'traditional tea ceremony' : 'commercial applications'}.`,
-        shortDesc: `High-quality ${p.name}`,
-        leadTimeDays: p.lead,
-        moqKg: p.moq,
-        certifications: p.certs,
-        status: ProductStatus.ACTIVE,
-        sellerId: p.seller,
-        regionId: p.region,
-        gradeTypeId: p.grade,
+        slug: p.slug,
+        description: p.description,
+        shortDesc: p.shortDesc,
+        leadTimeDays: p.leadTimeDays,
+        moqKg: p.moqKg,
+        certifications: p.certifications,
+        status: p.status,
+        isFeatured: p.isFeatured,
+        sellerId: p.sellerId,
+        regionId: p.regionId,
+        gradeTypeId: p.gradeTypeId,
+        // Create product images
         images: {
           create: [
-            { url: `/images/products/${slugify(p.name)}-1.jpg`, altText: p.name, isPrimary: true, sortOrder: 0 },
-            { url: `/images/products/${slugify(p.name)}-2.jpg`, altText: `${p.name} detail`, sortOrder: 1 },
+            {
+              url: `/uploads/images/products/${p.slug}.jpg`,
+              altText: p.name,
+              sortOrder: 0,
+              isPrimary: true,
+            },
+            {
+              url: `/uploads/images/products/${p.slug}-thumb.jpg`,
+              altText: `${p.name} thumbnail`,
+              sortOrder: 1,
+              isPrimary: false,
+            },
           ],
         },
+        // Create product documents (spec sheets)
         documents: {
           create: [
-            { type: DocumentType.SPEC_SHEET, name: 'Product Specification', url: `/docs/${slugify(p.name)}-spec.pdf` },
+            {
+              type: DocumentType.SPEC_SHEET,
+              name: `${p.name} - Specification Sheet`,
+              url: `/uploads/docs/${p.slug}-spec.pdf`,
+              fileSize: 150000, // ~150KB
+            },
           ],
         },
+        // Create SKUs with price tiers and inventory
+        skus: {
+          create: p.skus.map((sku) => ({
+            sku: sku.sku,
+            name: sku.name,
+            packagingType: sku.packagingType,
+            netWeightG: sku.netWeightG,
+            originCountry: 'JP',
+            currency: 'USD',
+            priceTiers: {
+              create: [
+                { minQty: 1, maxQty: 9, unit: 'unit', pricePerUnit: sku.pricePerUnit },
+                { minQty: 10, maxQty: 49, unit: 'unit', pricePerUnit: sku.pricePerUnit * 0.95 },
+                { minQty: 50, maxQty: null, unit: 'unit', pricePerUnit: sku.pricePerUnit * 0.90 },
+              ],
+            },
+            inventory: {
+              create: {
+                availableQty: Math.floor(Math.random() * 200) + 50,
+                reservedQty: Math.floor(Math.random() * 20),
+                unit: 'unit',
+                warehouseLocation: p.sellerId === sellerProfiles[0].id ? 'Uji-WH1' : 'Nishio-WH2',
+              },
+            },
+          })),
+        },
+      },
+      include: {
+        skus: true,
       },
     });
-    products.push(product);
+    createdProducts.push(product);
+    console.log(`  ✓ Created product: ${product.name}`);
   }
-  console.log(`   ✅ Created ${products.length} products`);
 
-  // Create 2 SKUs per product (20 total)
-  console.log('\n📦 Creating SKUs with price tiers and inventory...');
-  let skuCount = 0;
+  // ==================== SAMPLE RFQ ====================
+  console.log('📋 Creating sample RFQ...');
+  const rfq = await prisma.rfq.create({
+    data: {
+      rfqNumber: 'RFQ-2024-0001',
+      buyerProfileId: buyerProfiles[0].id,
+      title: 'Q2 Matcha Supply for Bay Area Cafes',
+      notes: 'Looking for reliable matcha supply for our 12 cafe locations. Need ceremonial grade for traditional service and culinary grade for lattes.',
+      destinationCountry: 'US',
+      destinationCity: 'San Francisco',
+      incoterm: Incoterm.DDP,
+      neededByDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000), // 45 days from now
+      expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+      status: RfqStatus.SUBMITTED,
+      lineItems: {
+        create: [
+          {
+            skuId: createdProducts[0].skus[2].id, // 500g bag
+            qty: 50,
+            unit: 'unit',
+            notes: 'Prefer vacuum-sealed packaging',
+          },
+          {
+            skuId: createdProducts[1].skus[1].id, // 500g bag
+            qty: 100,
+            unit: 'unit',
+            notes: 'For latte preparation',
+          },
+        ],
+      },
+    },
+    include: {
+      lineItems: true,
+    },
+  });
+
+  // ==================== SAMPLE QUOTE ====================
+  console.log('💰 Creating sample quote...');
+  await prisma.quote.create({
+    data: {
+      quoteNumber: 'QT-2024-0001',
+      rfqId: rfq.id,
+      sellerProfileId: sellerProfiles[0].id,
+      validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      subtotal: 35000,
+      shippingCost: 1500,
+      taxAmount: 0,
+      totalAmount: 36500,
+      currency: 'USD',
+      incoterm: Incoterm.DDP,
+      estimatedLeadDays: 21,
+      notes: 'Price includes air freight and customs clearance. 30-day payment terms available for established customers.',
+      status: QuoteStatus.SUBMITTED,
+      lineItems: {
+        create: [
+          {
+            skuId: createdProducts[0].skus[2].id,
+            qty: 50,
+            unit: 'unit',
+            unitPrice: 475, // 5% discount from listed price
+            totalPrice: 23750,
+            notes: 'Ceremonial grade, vacuum sealed',
+          },
+          {
+            skuId: createdProducts[1].skus[1].id,
+            qty: 100,
+            unit: 'unit',
+            unitPrice: 95, // Bulk discount
+            totalPrice: 9500,
+            notes: 'Culinary grade for café use',
+          },
+        ],
+      },
+    },
+  });
+
+  // ==================== SAMPLE CART ====================
+  console.log('🛒 Creating sample cart...');
+  const skuForCart = createdProducts[2].skus[0]; // Classic Usucha 30g tin
+  const unitPrice = 28; // Price from productData
+  const qty = 10;
   
-  // SKU prefixes for each product (must be unique)
-  const skuPrefixes = [
-    'KYO-ICM', // Imperial Ceremonial Matcha
-    'KYO-RCM', // Reserve Ceremonial Matcha
-    'KYO-DPM', // Daily Premium Matcha
-    'KYO-BBM', // Barista Blend Matcha
-    'KYO-YCR', // Yame Ceremonial Reserve
-    'NIS-CGN', // Cafe Grade Nishio
-    'NIS-CAN', // Culinary A Nishio
-    'NIS-CBN', // Culinary B Nishio
-    'NIS-KGC', // Kagoshima Culinary
-    'NIS-IEG', // Industrial Extract Grade
-  ];
-  
-  for (let i = 0; i < products.length; i++) {
-    const product = products[i];
-    const basePrice = [120, 100, 65, 55, 95, 45, 35, 28, 32, 18][i];
-    const prefix = skuPrefixes[i];
+  await prisma.cart.create({
+    data: {
+      userId: buyer1User.id,
+      type: CartType.DIRECT,
+      status: CartStatus.ACTIVE,
+      subtotal: unitPrice * qty,
+      itemCount: 1,
+      items: {
+        create: [
+          {
+            skuId: skuForCart.id,
+            qty: qty,
+            unit: 'unit',
+            unitPrice: unitPrice,
+            totalPrice: unitPrice * qty,
+            currency: 'USD',
+          },
+        ],
+      },
+    },
+  });
 
-    // SKU 1: Small package
-    const sku1 = await prisma.sku.create({
-      data: {
-        sku: `${prefix}-100G`,
-        name: '100g Pouch',
-        packagingType: 'Pouch',
-        netWeightG: 100,
-        lengthCm: 15,
-        widthCm: 10,
-        heightCm: 5,
-        grossWeightG: 120,
-        hsCode: '0902.10',
-        productId: product.id,
-        priceTiers: {
-          create: [
-            { minQty: 1, maxQty: 9, pricePerUnit: basePrice, unit: 'unit' },
-            { minQty: 10, maxQty: 49, pricePerUnit: basePrice * 0.9, unit: 'unit' },
-            { minQty: 50, maxQty: null, pricePerUnit: basePrice * 0.8, unit: 'unit' },
-          ],
-        },
-        inventory: {
-          create: { availableQty: 500, unit: 'unit', warehouseLocation: 'Tokyo-WH1' },
-        },
-      },
-    });
-    skuCount++;
+  // ==================== SHORTLIST ====================
+  console.log('⭐ Creating shortlist entries...');
+  await prisma.shortlist.create({
+    data: {
+      buyerProfileId: buyerProfiles[0].id,
+      productId: createdProducts[0].id,
+      notes: 'Great quality, considering for next quarter order',
+    },
+  });
 
-    // SKU 2: Bulk package
-    const sku2 = await prisma.sku.create({
-      data: {
-        sku: `${prefix}-1KG`,
-        name: '1kg Bulk Bag',
-        packagingType: 'Bag',
-        netWeightG: 1000,
-        lengthCm: 30,
-        widthCm: 20,
-        heightCm: 10,
-        grossWeightG: 1100,
-        hsCode: '0902.10',
-        productId: product.id,
-        priceTiers: {
-          create: [
-            { minQty: 1, maxQty: 4, pricePerUnit: basePrice * 8, unit: 'unit' },
-            { minQty: 5, maxQty: 19, pricePerUnit: basePrice * 7.2, unit: 'unit' },
-            { minQty: 20, maxQty: null, pricePerUnit: basePrice * 6.4, unit: 'unit' },
-          ],
-        },
-        inventory: {
-          create: { availableQty: 200, unit: 'unit', warehouseLocation: 'Tokyo-WH1' },
-        },
-      },
-    });
-    skuCount++;
-  }
-  console.log(`   ✅ Created ${skuCount} SKUs with price tiers and inventory`);
+  await prisma.shortlist.create({
+    data: {
+      buyerProfileId: buyerProfiles[0].id,
+      productId: createdProducts[5].id,
+      notes: 'Competition grade for special events',
+    },
+  });
 
-  // ==================== COMPLIANCE RULES (5) ====================
-  console.log('\n📋 Creating compliance rules...');
-  await Promise.all([
-    prisma.complianceRule.create({
-      data: {
-        destinationCountry: 'US',
-        productCategory: 'tea',
-        requiredCertifications: [],
-        requiredDocs: ['FDA Prior Notice Confirmation', 'Commercial Invoice', 'Packing List'],
-        warnings: ['Prior notice must be submitted 2-8 hours before arrival depending on transport mode'],
-        disclaimerText: 'This information is for guidance only. Please consult with a licensed customs broker for specific import requirements. All food imports to the US require prior notice submission to FDA before arrival.',
-        isActive: true,
-        createdByAdminId: admin.id,
-      },
-    }),
-    prisma.complianceRule.create({
-      data: {
-        destinationCountry: 'US',
-        productCategory: 'matcha',
-        minDeclaredValueUsd: 2500,
-        requiredCertifications: [],
-        requiredDocs: ['FSVP Documentation', 'Supplier Verification Records', 'Hazard Analysis', 'Commercial Invoice'],
-        warnings: ['Importer must be a US entity or have a US agent', 'FSVP compliance required for shipments over $2500'],
-        disclaimerText: 'Foreign Supplier Verification Program (FSVP) requirements apply. Importers must verify supplier food safety practices. This is general guidance - consult a customs broker.',
-        isActive: true,
-        createdByAdminId: admin.id,
-      },
-    }),
-    prisma.complianceRule.create({
-      data: {
-        destinationCountry: 'DE',
-        productCategory: 'tea',
-        requiredCertifications: [],
-        requiredDocs: ['Health Certificate', 'Certificate of Origin', 'Phytosanitary Certificate'],
-        warnings: ['Pesticide residue limits strictly enforced', 'Random sampling at border'],
-        disclaimerText: 'EU food safety regulations apply (Regulation EC No 178/2002). This guidance is for informational purposes only.',
-        isActive: true,
-        createdByAdminId: admin.id,
-      },
-    }),
-    prisma.complianceRule.create({
-      data: {
-        destinationCountry: 'DE',
-        productCategory: 'organic-tea',
-        requiredCertifications: ['ORGANIC', 'JAS'],
-        requiredDocs: ['EU Organic Certificate', 'JAS-EU Equivalence Documentation', 'Certificate of Origin'],
-        warnings: ['JAS certification alone not sufficient - requires equivalence documentation'],
-        disclaimerText: 'Products marketed as organic in EU must have recognized organic certification. JAS-EU equivalence documentation required. Consult with certification body.',
-        isActive: true,
-        createdByAdminId: admin.id,
-      },
-    }),
-    prisma.complianceRule.create({
-      data: {
-        destinationCountry: 'SG',
-        productCategory: 'matcha',
-        minWeightKg: 5,
-        requiredCertifications: [],
-        requiredDocs: ['SFA Import Permit', 'Health Certificate', 'Certificate of Analysis'],
-        warnings: ['Permit required for shipments over 5kg', 'Licensed food importer required'],
-        disclaimerText: 'Singapore Food Agency (SFA) regulations apply. Import permit required for food shipments. This is general guidance only.',
-        isActive: true,
-        createdByAdminId: admin.id,
-      },
-    }),
-  ]);
-  console.log('   ✅ Created 5 compliance rules');
+  // ==================== COMPLIANCE RULES ====================
+  console.log('📜 Creating compliance rules...');
+  await prisma.complianceRule.create({
+    data: {
+      destinationCountry: 'US',
+      productCategory: 'matcha',
+      minDeclaredValueUsd: 2500,
+      requiredCertifications: [],
+      requiredDocs: ['commercial-invoice', 'packing-list'],
+      warnings: ['FDA prior notice required for food imports'],
+      disclaimerText: 'Buyer is responsible for ensuring compliance with FDA food import regulations and any applicable state requirements.',
+      createdByAdminId: adminUser.id,
+    },
+  });
 
-  // ==================== CATEGORIES & TAGS ====================
-  console.log('\n🏷️  Creating categories and tags...');
+  await prisma.complianceRule.create({
+    data: {
+      destinationCountry: 'EU',
+      productCategory: 'organic-tea',
+      requiredCertifications: ['EU Organic'],
+      requiredDocs: ['certificate-of-origin', 'organic-certificate', 'phytosanitary-certificate'],
+      warnings: ['EU organic certification required for organic labeling'],
+      disclaimerText: 'Products marketed as organic in the EU must have valid EU organic certification. Buyer assumes responsibility for proper documentation.',
+      createdByAdminId: adminUser.id,
+    },
+  });
+
+  // ==================== CONTENT (Categories & Tags) ====================
+  console.log('📰 Creating content categories and tags...');
   const categories = await Promise.all([
-    prisma.category.create({ data: { name: 'Market Trends', slug: 'market-trends', sortOrder: 1 } }),
-    prisma.category.create({ data: { name: 'Industry News', slug: 'industry-news', sortOrder: 2 } }),
-    prisma.category.create({ data: { name: 'Sourcing Tips', slug: 'sourcing-tips', sortOrder: 3 } }),
-    prisma.category.create({ data: { name: 'Product Guides', slug: 'product-guides', sortOrder: 4 } }),
+    prisma.category.create({
+      data: { name: 'Industry News', slug: 'industry-news', description: 'Latest news from the matcha industry', sortOrder: 1 },
+    }),
+    prisma.category.create({
+      data: { name: 'Market Trends', slug: 'market-trends', description: 'Market analysis and pricing trends', sortOrder: 2 },
+    }),
+    prisma.category.create({
+      data: { name: 'Guides', slug: 'guides', description: 'Educational guides and how-tos', sortOrder: 3 },
+    }),
   ]);
 
-  const tags = await Promise.all([
-    prisma.tag.create({ data: { name: 'Matcha', slug: 'matcha' } }),
-    prisma.tag.create({ data: { name: 'Japan', slug: 'japan' } }),
+  await Promise.all([
     prisma.tag.create({ data: { name: 'Organic', slug: 'organic' } }),
     prisma.tag.create({ data: { name: 'Pricing', slug: 'pricing' } }),
+    prisma.tag.create({ data: { name: 'Sustainability', slug: 'sustainability' } }),
     prisma.tag.create({ data: { name: 'Quality', slug: 'quality' } }),
-    prisma.tag.create({ data: { name: 'Import', slug: 'import' } }),
   ]);
-  console.log(`   ✅ Created ${categories.length} categories and ${tags.length} tags`);
 
-  // ==================== INSIGHTS POSTS (5) ====================
-  console.log('\n📰 Creating insights posts...');
-  const posts = await Promise.all([
-    prisma.insightsPost.create({
-      data: {
-        title: '2024 Matcha Market Outlook',
-        slug: '2024-matcha-market-outlook',
-        excerpt: 'Analysis of global matcha market trends and growth projections for the coming year.',
-        content: `# 2024 Matcha Market Outlook\n\nThe global matcha market continues strong growth with a projected CAGR of 8.5% through 2028...\n\n## Key Trends\n\n1. Premiumization in Western markets\n2. Expansion of culinary applications\n3. Growing demand for organic certification\n\n## Regional Analysis\n\nNorth America and Europe show strongest growth while Japan remains the quality benchmark.`,
-        isPublished: true,
-        publishedAt: new Date('2024-01-15'),
-        authorId: admin.id,
-        categoryId: categories[0].id,
-        tags: { connect: [{ id: tags[0].id }, { id: tags[3].id }] },
-      },
-    }),
-    prisma.insightsPost.create({
-      data: {
-        title: 'Understanding Matcha Grades',
-        slug: 'understanding-matcha-grades',
-        excerpt: 'Complete guide to matcha grades from ceremonial to industrial.',
-        content: `# Understanding Matcha Grades\n\nMatcha grades vary significantly in quality, price, and intended use...\n\n## Ceremonial Grade\n\nThe highest quality, intended for traditional tea ceremony.\n\n## Culinary Grades\n\nDesigned for cooking, baking, and food manufacturing.`,
-        isPublished: true,
-        publishedAt: new Date('2024-02-01'),
-        authorId: admin.id,
-        categoryId: categories[3].id,
-        tags: { connect: [{ id: tags[0].id }, { id: tags[4].id }] },
-      },
-    }),
-    prisma.insightsPost.create({
-      data: {
-        title: 'Sourcing from Uji vs Nishio',
-        slug: 'sourcing-uji-vs-nishio',
-        excerpt: 'Comparing Japan\'s two major matcha producing regions.',
-        content: `# Sourcing from Uji vs Nishio\n\nBoth regions produce excellent matcha but with different characteristics...\n\n## Uji, Kyoto\n\nHistoric region known for premium ceremonial grades.\n\n## Nishio, Aichi\n\nLarger production volume, strong culinary grades.`,
-        isPublished: true,
-        publishedAt: new Date('2024-02-15'),
-        authorId: admin.id,
-        categoryId: categories[2].id,
-        tags: { connect: [{ id: tags[0].id }, { id: tags[1].id }] },
-      },
-    }),
-    prisma.insightsPost.create({
-      data: {
-        title: 'Import Regulations Update 2024',
-        slug: 'import-regulations-2024',
-        excerpt: 'Latest changes to food import regulations for major markets.',
-        content: `# Import Regulations Update 2024\n\nKey regulatory changes affecting matcha imports...\n\n## US Market\n\nFSVP enforcement increasing.\n\n## EU Market\n\nNew pesticide limits effective Q2 2024.`,
-        isPublished: true,
-        publishedAt: new Date('2024-03-01'),
-        authorId: admin.id,
-        categoryId: categories[1].id,
-        tags: { connect: [{ id: tags[5].id }] },
-      },
-    }),
-    prisma.insightsPost.create({
-      data: {
-        title: 'Organic Certification Guide',
-        slug: 'organic-certification-guide',
-        excerpt: 'Navigate organic certification requirements for different markets.',
-        content: `# Organic Certification Guide\n\nUnderstanding organic certification for matcha exports...\n\n## JAS Organic (Japan)\n\nJapanese Agricultural Standard for organic products.\n\n## USDA Organic\n\nUS market requirements and JAS equivalence.\n\n## EU Organic\n\nEuropean organic regulations and recognition.`,
-        isPublished: true,
-        publishedAt: new Date('2024-03-15'),
-        authorId: admin.id,
-        categoryId: categories[2].id,
-        tags: { connect: [{ id: tags[2].id }, { id: tags[5].id }] },
-      },
-    }),
-  ]);
-  console.log(`   ✅ Created ${posts.length} insights posts`);
+  // Sample insight post
+  await prisma.insightsPost.create({
+    data: {
+      title: '2024 Matcha Market Outlook',
+      slug: '2024-matcha-market-outlook',
+      excerpt: 'An analysis of global matcha demand trends and what they mean for B2B buyers.',
+      content: `
+## Global Matcha Market Overview
 
-  // ==================== TREND SERIES (2 with 30 points each) ====================
-  console.log('\n📈 Creating trend series...');
+The global matcha market continues to show strong growth, driven by increasing consumer awareness of health benefits and the expansion of matcha-based products in cafes and food service.
 
-  // Pricing trend series
+### Key Trends for 2024
+
+1. **Organic Certification Demand**: Buyers increasingly require organic certification, particularly for ceremonial-grade products.
+
+2. **Supply Chain Resilience**: Following recent disruptions, buyers are diversifying their supplier base across multiple regions.
+
+3. **Sustainability Focus**: Environmental certifications and sustainable farming practices are becoming key differentiators.
+
+### Price Projections
+
+Ceremonial-grade matcha prices are expected to remain stable, while culinary-grade may see slight increases due to rising demand from food manufacturers.
+      `,
+      isPublished: true,
+      publishedAt: new Date(),
+      authorId: adminUser.id,
+      categoryId: categories[1].id,
+    },
+  });
+
+  // ==================== TREND DATA ====================
+  console.log('📈 Creating trend series...');
   const pricingSeries = await prisma.trendSeries.create({
     data: {
       name: 'Ceremonial Matcha Price Index',
-      description: 'Average wholesale price for ceremonial grade matcha from Uji region',
+      description: 'Average wholesale price for ceremonial-grade matcha',
       type: TrendSeriesType.PRICING,
       unit: 'USD/kg',
       regionId: regions[0].id,
     },
   });
 
-  // Weather trend series
-  const weatherSeries = await prisma.trendSeries.create({
-    data: {
-      name: 'Uji Region Temperature',
-      description: 'Average daily temperature in Uji tea growing region',
-      type: TrendSeriesType.WEATHER,
-      unit: '°C',
-      regionId: regions[0].id,
-    },
-  });
-
-  // Generate 30 data points for each series (daily for last 30 days)
-  const pricingPoints: any[] = [];
-  const weatherPoints: any[] = [];
-  const basePrice = 280;
-  const baseTemp = 15;
-
-  for (let i = 29; i >= 0; i--) {
+  // Generate 12 months of price data
+  const basePrice = 95;
+  for (let i = 11; i >= 0; i--) {
     const date = new Date();
-    date.setDate(date.getDate() - i);
-    date.setHours(0, 0, 0, 0);
-
-    // Pricing with some variation
-    const priceVariation = (Math.random() - 0.5) * 20;
-    pricingPoints.push({
-      seriesId: pricingSeries.id,
-      date: date,
-      value: basePrice + priceVariation + (29 - i) * 0.3,
-      unit: 'USD/kg',
-      metadata: { source: 'market_data' },
-    });
-
-    // Weather with seasonal pattern
-    const tempVariation = (Math.random() - 0.5) * 5;
-    const seasonalAdjust = Math.sin((i / 30) * Math.PI) * 3;
-    weatherPoints.push({
-      seriesId: weatherSeries.id,
-      date: date,
-      value: baseTemp + tempVariation + seasonalAdjust,
-      unit: '°C',
-      metadata: { station: 'uji-central' },
+    date.setMonth(date.getMonth() - i);
+    const variation = (Math.random() - 0.5) * 10;
+    await prisma.trendPoint.create({
+      data: {
+        seriesId: pricingSeries.id,
+        date: date,
+        value: basePrice + variation,
+        unit: 'USD/kg',
+      },
     });
   }
 
-  await prisma.trendPoint.createMany({ data: pricingPoints });
-  await prisma.trendPoint.createMany({ data: weatherPoints });
-  console.log('   ✅ Created 2 trend series with 30 points each');
-
-  // ==================== SUMMARY ====================
-  console.log('\n' + '='.repeat(50));
-  console.log('🌱 Seed completed successfully!\n');
-  console.log('📊 Summary:');
-  console.log('   • 6 Regions');
-  console.log('   • 6 Grade Types');
-  console.log('   • 1 Admin, 2 Sellers, 2 Buyers');
-  console.log('   • 4 Companies with Addresses');
-  console.log('   • 10 Products with Images & Documents');
-  console.log('   • 20 SKUs with Price Tiers & Inventory');
-  console.log('   • 5 Compliance Rules (US/EU/SG)');
-  console.log('   • 4 Categories, 6 Tags');
-  console.log('   • 5 Insights Posts');
-  console.log('   • 2 Trend Series with 60 Data Points');
-  console.log('\n🔑 Demo Accounts:');
-  console.log('   Admin:    admin@matcha-trade.com / Admin123!');
-  console.log('   Seller 1: seller@kyoto-matcha.com / Seller123!');
-  console.log('   Seller 2: seller@nishio-green.com / Seller123!');
-  console.log('   Buyer 1:  buyer@urbantea.com / Buyer123!');
-  console.log('   Buyer 2:  buyer@healthybites.com / Buyer123!');
-  console.log('='.repeat(50));
+  console.log('\n✅ Seed completed successfully!');
+  console.log('\n📋 Demo Accounts:');
+  console.log('  Admin: admin@matcha-trade.com / Admin123!');
+  console.log('  Seller 1: seller@kyoto-matcha.com / Seller123!');
+  console.log('  Seller 2: seller@nishio-green.com / Seller123!');
+  console.log('  Buyer 1: buyer@urbantea.com / Buyer123!');
+  console.log('  Buyer 2: buyer@healthybites.com / Buyer123!');
 }
 
 main()

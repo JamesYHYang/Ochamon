@@ -338,7 +338,7 @@ export default function ProductDetailPage() {
                       <p className="font-medium">{doc.name}</p>
                       <p className="text-xs text-gray-500 uppercase">{doc.type}</p>
                     </div>
-                    <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                    <a href={`${API_URL}${doc.url}`} target="_blank" rel="noopener noreferrer">
                       <Button size="sm" variant="outline">Download</Button>
                     </a>
                   </CardContent>
@@ -351,3 +351,5 @@ export default function ProductDetailPage() {
     </div>
   );
 }
+
+

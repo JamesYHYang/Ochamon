@@ -96,11 +96,13 @@ pnpm dev:web  # http://localhost:3000
 
 After seeding, you can log in with these accounts:
 
-| Role   | Email                    | Password    |
-|--------|--------------------------|-------------|
-| Admin  | admin@matcha-trade.com   | Admin123!   |
-| Seller | seller@matcha-farm.com   | Seller123!  |
-| Buyer  | buyer@teashop.com        | Buyer123!   |
+| Role     | Email                      | Password    |
+|----------|----------------------------|-------------|
+| Admin    | admin@matcha-trade.com     | Admin123!   |
+| Seller 1 | seller@kyoto-matcha.com    | Seller123!  |
+| Seller 2 | seller@nishio-green.com    | Seller123!  |
+| Buyer 1  | buyer@urbantea.com         | Buyer123!   |
+| Buyer 2  | buyer@healthybites.com     | Buyer123!   |
 
 ## API Documentation
 
@@ -307,3 +309,4 @@ pnpm test:watch
 ## License
 
 MIT
+

@@ -245,7 +245,7 @@ export class SellerService {
         leadTimeDays: dto.leadTimeDays ?? 14,
         moqKg: dto.moqKg,
         certifications: dto.certifications ?? [],
-        status: (dto.status as ProductStatus) ?? ProductStatus.DRAFT,
+        status: (dto.status as ProductStatus) ?? ProductStatus.ACTIVE,
         sellerId: seller.id,
         regionId: dto.regionId,
         gradeTypeId: dto.gradeTypeId,
@@ -655,3 +655,5 @@ export class SellerService {
     });
   }
 }
+
+

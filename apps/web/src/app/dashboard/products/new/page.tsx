@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface Region {
   id: string;
@@ -12,6 +12,14 @@ interface GradeType {
   id: string;
   name: string;
   code: string;
+}
+
+interface ProductImage {
+  id: string;
+  url: string;
+  altText: string | null;
+  isPrimary: boolean;
+  file?: File;
 }
 
 interface ProductFormData {
@@ -42,6 +50,8 @@ export default function NewProductPage() {
   const [regions, setRegions] = useState<Region[]>([]);
   const [gradeTypes, setGradeTypes] = useState<GradeType[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [images, setImages] = useState<ProductImage[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -111,6 +121,47 @@ export default function NewProductPage() {
     }));
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newImages: ProductImage[] = Array.from(files).map((file, index) => ({
+      id: `new-${Date.now()}-${index}`,
+      url: URL.createObjectURL(file),
+      altText: file.name,
+      isPrimary: images.length === 0 && index === 0,
+      file,
+    }));
+
+    setImages((prev) => [...prev, ...newImages]);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveImage = (imageId: string) => {
+    setImages((prev) => {
+      const filtered = prev.filter((img) => img.id !== imageId);
+      const removedImage = prev.find((img) => img.id === imageId);
+      
+      if (removedImage?.isPrimary && filtered.length > 0) {
+        filtered[0].isPrimary = true;
+      }
+      
+      return filtered;
+    });
+  };
+
+  const handleSetPrimary = (imageId: string) => {
+    setImages((prev) =>
+      prev.map((img) => ({
+        ...img,
+        isPrimary: img.id === imageId,
+      }))
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent, saveAsDraft: boolean = false) => {
     e.preventDefault();
     setLoading(true);
@@ -149,9 +200,30 @@ export default function NewProductPage() {
       }
 
       const product = await res.json();
+
+      // Upload images if any
+      for (const image of images) {
+        if (image.file) {
+          const formDataUpload = new FormData();
+          formDataUpload.append('file', image.file);
+          formDataUpload.append('isPrimary', String(image.isPrimary));
+
+          try {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/seller/products/${product.id}/images`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: formDataUpload,
+            });
+          } catch (imgErr) {
+            console.warn('Image upload failed:', imgErr);
+          }
+        }
+      }
+
       setSuccess(true);
 
-      // Redirect to product detail or list after short delay
       setTimeout(() => {
         window.location.href = `/dashboard/products/${product.id}`;
       }, 1500);
@@ -220,6 +292,76 @@ export default function NewProductPage() {
       )}
 
       <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
+        {/* Images Section */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">Product Images</h2>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {images.map((image) => (
+              <div
+                key={image.id}
+                className={`relative aspect-square rounded-lg overflow-hidden border-2 ${
+                  image.isPrimary ? 'border-indigo-500' : 'border-gray-200'
+                }`}
+              >
+                <img
+                  src={image.url}
+                  alt={image.altText || 'Product image'}
+                  className="w-full h-full object-cover"
+                />
+                {image.isPrimary && (
+                  <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-indigo-500 text-white text-xs rounded">
+                    Primary
+                  </span>
+                )}
+                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-1 flex justify-center gap-1">
+                  {!image.isPrimary && (
+                    <button
+                      type="button"
+                      onClick={() => handleSetPrimary(image.id)}
+                      className="px-2 py-1 bg-white text-gray-700 text-xs rounded hover:bg-gray-100"
+                    >
+                      Set Primary
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(image.id)}
+                    className="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Add Image Button */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
+            >
+              <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="mt-2 text-sm text-gray-500">Add Image</span>
+            </div>
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageUpload}
+            className="hidden"
+          />
+
+          <p className="text-sm text-gray-500">
+            Upload product images. The primary image will be shown in listings. Recommended size: 800x800px.
+          </p>
+        </div>
+
+        {/* Basic Information */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">Basic Information</h2>
 
@@ -271,6 +413,7 @@ export default function NewProductPage() {
           </div>
         </div>
 
+        {/* Classification */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">Classification</h2>
 
@@ -319,6 +462,7 @@ export default function NewProductPage() {
           </div>
         </div>
 
+        {/* Pricing & Logistics */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">Pricing & Logistics</h2>
 
@@ -358,6 +502,7 @@ export default function NewProductPage() {
           </div>
         </div>
 
+        {/* Certifications */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">Certifications</h2>
 
@@ -376,6 +521,7 @@ export default function NewProductPage() {
           </div>
         </div>
 
+        {/* Status */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h2 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-4">Status</h2>
 
@@ -405,6 +551,7 @@ export default function NewProductPage() {
           </div>
         </div>
 
+        {/* Actions */}
         <div className="flex justify-end gap-3 pt-4">
           <button
             type="button"

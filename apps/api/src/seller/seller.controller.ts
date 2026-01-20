@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -120,7 +121,8 @@ export class SellerController {
     return this.sellerService.getProduct(user.id, id);
   }
 
-  @Put('products/:id')
+   @Put('products/:id')
+  @Patch('products/:id')
   @ApiOperation({ summary: 'Update product' })
   async updateProduct(
     @CurrentUser() user: { id: string },
